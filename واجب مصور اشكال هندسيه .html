@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اختبار الأشكال الهندسية التفاعلي للأبطال</title>
+    <!-- Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts - Cairo for beautiful Arabic typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+            min-height: 100vh;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        .btn-bounce {
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
+        }
+
+        .btn-bounce:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+        }
+
+        .btn-bounce:active {
+            transform: translateY(2px) scale(0.98);
+        }
+
+        /* SVG Shape Glow Effect */
+        .shape-container svg {
+            filter: drop-shadow(0px 8px 16px rgba(0, 0, 0, 0.15));
+            transition: transform 0.4s ease;
+        }
+
+        .shape-container:hover svg {
+            transform: scale(1.05) rotate(2deg);
+        }
+
+        /* Confetti Canvas overlay */
+        #confettiCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 99;
+        }
+
+        .badge-star {
+            animation: pulseStar 1.5s infinite ease-in-out;
+        }
+
+        @keyframes pulseStar {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15) rotate(5deg); }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center p-3 md:p-6">
+
+    <!-- Canvas for Confetti Fireworks -->
+    <canvas id="confettiCanvas"></canvas>
+
+    <!-- Main Container -->
+    <div class="w-full max-w-3xl glass-card rounded-3xl p-5 md:p-8 relative overflow-hidden transition-all duration-500">
+        
+        <!-- Header Banner -->
+        <header class="text-center mb-6">
+            <div class="inline-flex items-center justify-center gap-2 bg-amber-100 text-amber-800 px-4 py-1.5 rounded-full font-bold text-sm md:text-base mb-2 border border-amber-300">
+                <i class="fa-solid fa-shapes text-amber-500"></i>
+                <span>واجب الأشكال الهندسية المصور</span>
+            </div>
+            <h1 class="text-2xl md:text-4xl font-extrabold text-indigo-900 tracking-tight">
+                اختبر معلوماتك الهندسية يا بطل! 🌟
+            </h1>
+        </header>
+
+        <!-- Dynamic Content Section -->
+        <div id="quizApp">
+            <!-- Content will be dynamically inserted here via JS -->
+        </div>
+
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- Web Audio API for Sound Effects ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
+            }
+        }
+
+        function playSound(type) {
+            try {
+                initAudio();
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const now = audioCtx.currentTime;
+
+                if (type === 'correct') {
+                    // Success Chime
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, now); // C5
+                    osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.1); // E5
+                    osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.2); // G5
+                    osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.3); // C6
+                    
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+
+                    osc.start(now);
+                    osc.stop(now + 0.5);
+                } else if (type === 'wrong') {
+                    // Error Buzz
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, now); // A3
+                    osc.frequency.linearRampToValueAtTime(110, now + 0.25); // A2
+
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else if (type === 'finish') {
+                    // Fanfare Cheer
+                    const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+                    notes.forEach((freq, idx) => {
+                        const noteOsc = audioCtx.createOscillator();
+                        const noteGain = audioCtx.createGain();
+                        noteOsc.type = 'triangle';
+                        noteOsc.frequency.setValueAtTime(freq, now + idx * 0.12);
+                        
+                        noteGain.gain.setValueAtTime(0.25, now + idx * 0.12);
+                        noteGain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.12 + 0.4);
+
+                        noteOsc.connect(noteGain);
+                        noteGain.connect(audioCtx.destination);
+
+                        noteOsc.start(now + idx * 0.12);
+                        noteOsc.stop(now + idx * 0.12 + 0.4);
+                    });
+                }
+            } catch (e) {
+                console.log("Audio not allowed yet or not supported", e);
+            }
+        }
+
+        // --- Question Bank (10 Vector SVG Illustrated Shapes) ---
+        const questionsData = [
+            {
+                id: 1,
+                question: "ما اسم هذا الشكل الهندسي الجميل؟",
+                options: ["مربع", "دائرة", "مثلث", "مستطيل"],
+                correctIndex: 0,
+                hint: "له 4 أضلاع متساوية في الطول تماماً!",
+                svg: `
+                    <svg width="180" height="180" viewBox="0 0 200 200">
+                        <defs>
+                            <linearGradient id="gradSquare" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#4facfe" />
+                                <stop offset="100%" stop-color="#00f2fe" />
+                            </linearGradient>
+                        </defs>
+                        <rect x="25" y="25" width="150" height="150" rx="16" fill="url(#gradSquare)" stroke="#0284c7" stroke-width="6"/>
+                        <circle cx="70" cy="75" r="10" fill="#fff"/>
+                        <circle cx="130" cy="75" r="10" fill="#fff"/>
+                        <circle cx="70" cy="75" r="4" fill="#000"/>
+                        <circle cx="130" cy="75" r="4" fill="#000"/>
+                        <path d="M 75 120 Q 100 145 125 120" stroke="#fff" stroke-width="6" stroke-linecap="round" fill="none"/>
+                    </svg>`
+            },
+            {
+                id: 2,
+                question: "ما اسم هذا الشكل الهندسي الذي يشبه قرص الشمس؟",
+                options: ["مربع", "دائرة", "معين", "خماسي"],
+                correctIndex: 1,
+                hint: "ليس له أي أضلاع ولا زوايا!",
+                svg: `
+                    <svg width="180" height="180" viewBox="0 0 200 200">
+                        <defs>
+                            <linearGradient id="gradCircle" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#ff0844" />
+                                <stop offset="100%" stop-color="#ffb199" />
+                            </linearGradient>
+                        </defs>
+                        <circle cx="100" cy="100" r="80" fill="url(#gradCircle)" stroke="#e11d48" stroke-width="6"/>
+                        <circle cx="75" cy="80" r="9" fill="#fff"/>
+                        <circle cx="125" cy="80" r="9" fill="#fff"/>
+                        <circle cx="75" cy="80" r="4" fill="#000"/>
+                        <circle cx="125" cy="80" r="4" fill="#000"/>
+                        <path d="M 70 120 Q 100 150 130 120" stroke="#fff" stroke-width="6" stroke-linecap="round" fill="none"/>
+                    </svg>`
+            },
+            {
+                id: 3,
+                question: "كم عدد أضلاع هذا الشكل الهندسي (المثلث)؟",
+                options: ["2 أضلاع", "3 أضلاع", "4 أضلاع", "5 أضلاع"],
+                correctIndex: 1,
+                hint: "عد الرؤوس الثلاثة للشكل!",
+                svg: `
+                    <svg width="180" height="180" viewBox="0 0 200 200">
+                        <defs>
+                            <linearGradient id="gradTriangle" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" stop-color="#f6d365" />
+                                <stop offset="100%" stop-color="#fda085" />
+                            </linearGradient>
+                        </defs>
+                        <polygon points="100,20 20,175 180,175" fill="url(#gradTriangle)" stroke="#ea580c" stroke-width="6" stroke-linejoin="round"/>
+                        <circle cx="80" cy="100" r="8" fill="#fff"/>
+                        <circle cx="120" cy="100" r="8" fill="#fff"/>
+                        <circle cx="80" cy="100" r="3" fill="#000"/>
+                        <circle cx="120" cy="100" r="3" fill="#000"/>
+                        <path d="M 85 135 Q 100 150 115 135" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none"/>
+                    </svg>`
+            },
+            {
+                id: 4,
+                question: "ما اسم هذا الشكل الذي يشبه باب الغرفة أو الشاشة؟",
+                options: ["مستطيل", "مربع", "شكل بيضاوي", "سداسي"],
+                correctIndex: 0,
+                hint: "فيه كل ضلعين متقابلين متساويين!",
+                svg: `
+                    <svg width="210" height="150" viewBox="0 0 220 160">
+                        <defs>
+                            <linearGradient id="gradRect" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#11998e" />
+                                <stop offset="100%" stop-color="#38ef7d" />
+                            </linearGradient>
+                        </defs>
+                        <rect x="15" y="20" width="190" height="120" rx="14" fill="url(#gradRect)" stroke="#059669" stroke-width="6"/>
+                        <circle cx="80" cy="65" r="9" fill="#fff"/>
+                        <circle cx="140" cy="65" r="9" fill="#fff"/>
+                        <circle cx="80" cy="65" r="4" fill="#000"/>
+                        <circle cx="140" cy="65" r="4" fill="#000"/>
+                        <path d="M 85 100 Q 110 120 135 100" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none"/>
+                    </svg>`
+            },
+            {
+                id: 5,
+                question: "ما اسم هذا الشكل الهندسي الذي يشبه البيضة؟",
+                options: ["دائرة", "شكل بيضاوي", "معين", "نجمة"],
+                correctIndex: 1,
+                hint: "يشبه الدائرة ولكنه مسحوب قليلاً!",
+                svg: `
+                    <svg width="180" height="180" viewBox="0 0 200 200">
+                        <defs>
+                            <linearGradient id="gradOval" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#a8c0ff" />
+                                <stop offset="100%" stop-color="#3f2b96" />
+                            </linearGradient>
+                        </defs>
+                        <ellipse cx="100" cy="100" rx="85" ry="60" fill="url(#gradOval)" stroke="#4338ca" stroke-width="6"/>
+                        <circle cx="75" cy="85" r="8" fill="#fff"/>
+                        <circle cx="125" cy="85" r="8" fill="#fff"/>
+                        <circle cx="75" cy="85" r="3.5" fill="#000"/>
+                        <circle cx="125" cy="85" r="3.5" fill="#000"/>
+                        <path d="M 80 120 Q 100 135 120 120" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none"/>
+                    </svg>`
+            },
+            {
+                id: 6,
+                question: "ما هو اسم هذا الشكل الهندسي اللامع في السماء؟",
+                options: ["نجمة", "هلال", "مثلث", "قلب"],
+                correctIndex: 0,
+                hint: "تلمع في السماء ليلاً ولها 5 رؤوس!",
+                svg: `
+                    <svg width="180" height="180" viewBox="0 0 200 200">
+                        <defs>
+                            <linearGradient id="gradStar" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#f80032" />
+                                <stop offset="100%" stop-color="#f7673c" />
+                            </linearGradient>
+                        </defs>
+                        <polygon points="100,10 125,70 190,70 137,110 157,175 100,135 43,175 63,110 10,70 75,70" fill="url(#gradStar)" stroke="#dc2626" stroke-width="5" stroke-linejoin="round"/>
+                        <circle cx="80" cy="80" r="7" fill="#fff"/>
+                        <circle cx="120" cy="80" r="7" fill="#fff"/>
+                        <circle cx="80" cy="80" r="3" fill="#000"/>
+                        <circle cx="120" cy="80" r="3" fill="#000"/>
+                        <path d="M 85 108 Q 100 120 115 108" stroke="#fff" stroke-width="4" stroke-linecap="round" fill="none"/>
+                    </svg>`
+            },
+            {
+                id: 7,
+                question: "ما اسم هذا الشكل المائل المسمى أيضاً بـ (المعيّن)؟",
+                options: ["معيّن (Diamond)", "مربع", "مستطيل", "خماسي"],
+                correctIndex: 0,
+                hint: "يشبه المربع ولكنه واقف على أحد رؤوسه!",
+                svg: `
+                    <svg width="180" height="180" viewBox="0 0 200 200">
+                        <defs>
+                            <linearGradient id="gradDiamond" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#89f7fe" />
+                                <stop offset="100%" stop-color="#66a6ff" />
+                            </linearGradient>
+                        </defs>
+                        <polygon points="100,15 175,100 100,185 25,100" fill="url(#gradDiamond)" stroke="#2563eb" stroke-width="6" stroke-linejoin="round"/>
+                        <circle cx="75" cy="90" r="8" fill="#fff"/>
+                        <circle cx="125" cy="90" r="8" fill="#fff"/>
+                        <circle cx="75" cy="90" r="3.5" fill="#000"/>
+                        <circle cx="125" cy="90" r="3.5" fill="#000"/>
+                        <path d="M 80 125 Q 100 140 120 125" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none"/>
+                    </svg>`
+            },
+            {
+                id: 8,
+                question: "كم عدد أضلاع الشكل الخماسي (Pentagon)؟",
+                options: ["4 أضلاع", "5 أضلاع", "6 أضلاع", "8 أضلاع"],
+                correctIndex: 1,
+                hint: "من اسمه (خماسي)... عد أضلاعه بنفسك!",
+                svg: `
+                    <svg width="180" height="180" viewBox="0 0 200 200">
+                        <defs>
+                            <linearGradient id="gradPenta" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#b19ffb" />
+                                <stop offset="100%" stop-color="#e8a7fc" />
+                            </linearGradient>
+                        </defs>
+                        <polygon points="100,15 185,75 150,180 50,180 15,75" fill="url(#gradPenta)" stroke="#9333ea" stroke-width="6" stroke-linejoin="round"/>
+                        <circle cx="75" cy="90" r="8" fill="#fff"/>
+                        <circle cx="125" cy="90" r="8" fill="#fff"/>
+                        <circle cx="75" cy="90" r="3" fill="#000"/>
+                        <circle cx="125" cy="90" r="3" fill="#000"/>
+                        <path d="M 80 130 Q 100 145 120 130" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none"/>
+                    </svg>`
+            },
+            {
+                id: 9,
+                question: "ما اسم هذا الشكل الهندسي الذي يحتوي على 6 أضلاع؟",
+                options: ["شكل سداسي (Hexagon)", "شكل خماسي", "مربع", "دائرة"],
+                correctIndex: 0,
+                hint: "يشبه خلية النحل الجميلة!",
+                svg: `
+                    <svg width="180" height="180" viewBox="0 0 200 200">
+                        <defs>
+                            <linearGradient id="gradHex" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#ff9a9e" />
+                                <stop offset="100%" stop-color="#fecfef" />
+                            </linearGradient>
+                        </defs>
+                        <polygon points="100,15 175,55 175,145 100,185 25,145 25,55" fill="url(#gradHex)" stroke="#db2777" stroke-width="6" stroke-linejoin="round"/>
+                        <circle cx="75" cy="85" r="8" fill="#fff"/>
+                        <circle cx="125" cy="85" r="8" fill="#fff"/>
+                        <circle cx="75" cy="85" r="3.5" fill="#000"/>
+                        <circle cx="125" cy="85" r="3.5" fill="#000"/>
+                        <path d="M 80 125 Q 100 140 120 125" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none"/>
+                    </svg>`
+            },
+            {
+                id: 10,
+                question: "ما اسم هذا الشكل الجميل الذي يظهر في بداية الشهر في السماء؟",
+                options: ["هلال", "قلب", "دائرة", "شكل بيضاوي"],
+                correctIndex: 0,
+                hint: "نراه في السماء في شهر رمضان المبارك!",
+                svg: `
+                    <svg width="180" height="180" viewBox="0 0 200 200">
+                        <defs>
+                            <linearGradient id="gradCrescent" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#fce38a" />
+                                <stop offset="100%" stop-color="#f38181" />
+                            </linearGradient>
+                        </defs>
+                        <path d="M 120 20 A 75 75 0 1 0 120 180 A 60 60 0 1 1 120 20 Z" fill="url(#gradCrescent)" stroke="#d97706" stroke-width="5" stroke-linejoin="round"/>
+                        <circle cx="70" cy="90" r="7" fill="#fff"/>
+                        <circle cx="70" cy="90" r="3" fill="#000"/>
+                        <path d="M 60 120 Q 75 130 90 120" stroke="#fff" stroke-width="4" stroke-linecap="round" fill="none"/>
+                    </svg>`
+            }
+        ];
+
+        // --- App State ---
+        let currentQuestionIndex = 0;
+        let userAnswers = new Array(questionsData.length).fill(null);
+        let selectedOptionForCurrent = null;
+
+        // --- Core Rendering Functions ---
+
+        function renderQuiz() {
+            const container = document.getElementById("quizApp");
+            const q = questionsData[currentQuestionIndex];
+            const progressPercent = Math.round(((currentQuestionIndex + 1) / questionsData.length) * 100);
+
+            selectedOptionForCurrent = userAnswers[currentQuestionIndex];
+
+            container.innerHTML = `
+                <!-- Progress Bar -->
+                <div class="mb-6">
+                    <div class="flex justify-between items-center text-sm font-bold text-gray-600 mb-2">
+                        <span>السؤال ${currentQuestionIndex + 1} من ${questionsData.length}</span>
+                        <span class="text-indigo-600">${progressPercent}%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 h-3.5 rounded-full overflow-hidden p-0.5 border border-gray-300">
+                        <div class="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-300" style="width: ${progressPercent}%"></div>
+                    </div>
+                </div>
+
+                <!-- Question Card -->
+                <div class="bg-white/80 rounded-2xl p-4 md:p-6 shadow-sm border border-indigo-50 mb-6">
+                    <h2 class="text-xl md:text-2xl font-bold text-gray-800 text-center mb-4">
+                        ${q.question}
+                    </h2>
+
+                    <!-- Shape Illustration Box -->
+                    <div class="shape-container flex justify-center items-center py-4 bg-gradient-to-b from-indigo-50/50 to-purple-50/50 rounded-xl border border-indigo-100 my-3">
+                        ${q.svg}
+                    </div>
+
+                    <!-- Hint / Encouragement -->
+                    <p class="text-center text-xs md:text-sm text-indigo-600 font-semibold mt-2">
+                        💡 تلميح: ${q.hint}
+                    </p>
+                </div>
+
+                <!-- Multiple Choice Options Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-8">
+                    ${q.options.map((optionText, idx) => {
+                        const isSelected = selectedOptionForCurrent === idx;
+                        return `
+                            <button 
+                                onclick="selectOption(${idx})" 
+                                class="btn-bounce text-right p-4 rounded-xl font-bold text-lg border-2 flex items-center justify-between transition-all ${
+                                    isSelected 
+                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg' 
+                                    : 'bg-white text-gray-700 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50'
+                                }"
+                            >
+                                <span class="flex items-center gap-3">
+                                    <span class="w-8 h-8 rounded-full flex items-center justify-center text-sm ${isSelected ? 'bg-white text-indigo-600' : 'bg-indigo-100 text-indigo-700'} font-extrabold">
+                                        ${String.fromCharCode(65 + idx)}
+                                    </span>
+                                    ${optionText}
+                                </span>
+                                ${isSelected ? '<i class="fa-solid fa-circle-check text-xl text-amber-300"></i>' : '<i class="fa-regular fa-circle text-gray-300"></i>'}
+                            </button>
+                        `;
+                    }).join('')}
+                </div>
+
+                <!-- Navigation Controls -->
+                <div class="flex justify-between items-center gap-3 pt-2 border-t border-gray-200/60">
+                    <button 
+                        onclick="prevQuestion()" 
+                        class="btn-bounce px-5 py-2.5 rounded-xl bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 text-sm md:text-base"
+                        ${currentQuestionIndex === 0 ? 'disabled' : ''}
+                    >
+                        <i class="fa-solid fa-arrow-right"></i>
+                        <span>السابق</span>
+                    </button>
+
+                    ${currentQuestionIndex === questionsData.length - 1 ? `
+                        <button 
+                            onclick="finishQuiz()" 
+                            class="btn-bounce px-7 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold shadow-lg shadow-emerald-200 flex items-center gap-2 text-base md:text-lg"
+                        >
+                            <span>إرساال الواجب وإنهاء</span>
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    ` : `
+                        <button 
+                            onclick="nextQuestion()" 
+                            class="btn-bounce px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md flex items-center gap-2 text-sm md:text-base"
+                        >
+                            <span>التالي</span>
+                            <i class="fa-solid fa-arrow-left"></i>
+                        </button>
+                    `}
+                </div>
+            `;
+        }
+
+        function selectOption(index) {
+            userAnswers[currentQuestionIndex] = index;
+            playSound('correct');
+            renderQuiz();
+        }
+
+        function nextQuestion() {
+            if (userAnswers[currentQuestionIndex] === null) {
+                showToast("الرجاء اختيار إجابة أولاً يا بطل! ✏️");
+                playSound('wrong');
+                return;
+            }
+            if (currentQuestionIndex < questionsData.length - 1) {
+                currentQuestionIndex++;
+                renderQuiz();
+            }
+        }
+
+        function prevQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                renderQuiz();
+            }
+        }
+
+        function finishQuiz() {
+            if (userAnswers.includes(null)) {
+                const unansweredCount = userAnswers.filter(a => a === null).length;
+                showToast(`باقي ${unansweredCount} أسئلة لم تقم بإجابتها بعد! 🧐`);
+                playSound('wrong');
+                return;
+            }
+
+            playSound('finish');
+            triggerConfetti();
+            renderResults();
+        }
+
+        // --- Custom Toast Warning Message ---
+        function showToast(message) {
+            const existing = document.getElementById("toastMsg");
+            if (existing) existing.remove();
+
+            const toast = document.createElement("div");
+            toast.id = "toastMsg";
+            toast.className = "fixed bottom-6 left-1/2 -translate-x-1/2 bg-amber-500 text-white px-6 py-3 rounded-full shadow-2xl font-bold text-sm md:text-base flex items-center gap-2 z-50 animate-bounce";
+            toast.innerHTML = `<i class="fa-solid fa-circle-exclamation text-lg"></i> <span>${message}</span>`;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                if (toast) toast.remove();
+            }, 3000);
+        }
+
+        // --- End of Quiz Feedback & Summary Screen ---
+        function renderResults() {
+            let score = 0;
+            questionsData.forEach((q, idx) => {
+                if (userAnswers[idx] === q.correctIndex) {
+                    score++;
+                }
+            });
+
+            const percentage = Math.round((score / questionsData.length) * 100);
+
+            // Badge & Encouragement Text Logic
+            let badgeTitle = "";
+            let badgeColor = "";
+            let badgeIcon = "";
+            let messageText = "";
+
+            if (score === 10) {
+                badgeTitle = "ممتاز جداً - عبقري الأشكال! 🏆";
+                badgeColor = "text-amber-500 bg-amber-50 border-amber-200";
+                badgeIcon = "fa-trophy";
+                messageText = "ما شاء الله يا بطل! إجاباتك كلها صحيحة 100%.. تستحق وسام التميز الهندسي! 🎉";
+            } else if (score >= 7) {
+                badgeTitle = "جيد جداً - مهندس متميز! ⭐";
+                badgeColor = "text-emerald-600 bg-emerald-50 border-emerald-200";
+                badgeIcon = "fa-star";
+                messageText = "عمل رائع جداً! أقتربت من الدرجة النهائية، واصل تفوقك دائماً! 💪";
+            } else if (score >= 5) {
+                badgeTitle = "جيد - محاولة طيبة! 👍";
+                badgeColor = "text-blue-600 bg-blue-50 border-blue-200";
+                badgeIcon = "fa-thumbs-up";
+                messageText = "أحسنت! أداء جيد، ويمكنك مراجعة الأشكال وإعادة الاختبار للحصول على 10 من 10! 🚀";
+            } else {
+                badgeTitle = "يحتاج إلى تدريب إضافي 💡";
+                badgeColor = "text-purple-600 bg-purple-50 border-purple-200";
+                badgeIcon = "fa-book-open";
+                messageText = "لا بأس يا بطل! التعلم يتطلب المحاولة.. راجع الإجابات الصحيحة أدناه وحاول مرة أخرى! 🌟";
+            }
+
+            const container = document.getElementById("quizApp");
+            container.innerHTML = `
+                <!-- Score Summary Box -->
+                <div class="text-center bg-white/90 rounded-2xl p-6 shadow-sm border border-indigo-100 mb-6">
+                    <div class="inline-flex items-center justify-center w-20 h-20 rounded-full ${badgeColor} border-2 mb-3 shadow-inner badge-star text-3xl">
+                        <i class="fa-solid ${badgeIcon}"></i>
+                    </div>
+                    
+                    <h2 class="text-2xl md:text-3xl font-extrabold text-gray-800 mb-1">
+                        حصلت على: <span class="text-indigo-600">${score}</span> من <span class="text-gray-500">10</span>
+                    </h2>
+                    
+                    <div class="text-lg font-bold text-indigo-500 mb-3">
+                        النسبة المئوية: %${percentage}
+                    </div>
+
+                    <div class="inline-block px-4 py-1.5 rounded-full font-bold text-sm md:text-base ${badgeColor} mb-3">
+                        ${badgeTitle}
+                    </div>
+
+                    <p class="text-gray-600 font-semibold text-sm md:text-base max-w-md mx-auto">
+                        ${messageText}
+                    </p>
+                </div>
+
+                <!-- Detailed Answers Review Section -->
+                <div class="mb-6">
+                    <h3 class="text-lg md:text-xl font-extrabold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-indigo-600"></i>
+                        <span>مراجعة الإجابات الـ 10 بالتفصيل:</span>
+                    </h3>
+
+                    <div class="space-y-3 max-h-80 overflow-y-auto pr-1">
+                        ${questionsData.map((q, idx) => {
+                            const userAnsIndex = userAnswers[idx];
+                            const isCorrect = userAnsIndex === q.correctIndex;
+
+                            return `
+                                <div class="bg-white rounded-xl p-3.5 border-2 ${isCorrect ? 'border-emerald-200 bg-emerald-50/20' : 'border-rose-200 bg-rose-50/20'} flex items-center justify-between gap-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-12 h-12 flex-shrink-0 bg-gray-50 rounded-lg p-1 border border-gray-200 flex items-center justify-center">
+                                            ${q.svg.replace('width="180"', 'width="40"').replace('height="180"', 'height="40"').replace('width="210"', 'width="40"').replace('height="150"', 'height="30"')}
+                                        </div>
+                                        <div>
+                                            <div class="font-bold text-gray-800 text-sm md:text-base">
+                                                ${idx + 1}. ${q.question}
+                                            </div>
+                                            <div class="text-xs md:text-sm mt-1">
+                                                <span class="text-gray-500">إجابتك:</span> 
+                                                <span class="${isCorrect ? 'text-emerald-700 font-bold' : 'text-rose-600 font-bold'}">
+                                                    ${q.options[userAnsIndex]}
+                                                </span>
+                                                ${!isCorrect ? `
+                                                    | <span class="text-gray-500">الصحيحة:</span> 
+                                                    <span class="text-emerald-700 font-bold">${q.options[q.correctIndex]}</span>
+                                                ` : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-xl">
+                                        ${isCorrect 
+                                            ? '<i class="fa-solid fa-circle-check text-emerald-500"></i>' 
+                                            : '<i class="fa-solid fa-circle-xmark text-rose-500"></i>'}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+
+                <!-- Action Button: Restart Quiz -->
+                <div class="text-center pt-2">
+                    <button 
+                        onclick="restartQuiz()" 
+                        class="btn-bounce px-8 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-extrabold text-lg shadow-lg shadow-indigo-200 flex items-center gap-3 mx-auto"
+                    >
+                        <i class="fa-solid fa-rotate-right"></i>
+                        <span>إعادة الاختبار ومحاولة جديدة</span>
+                    </button>
+                </div>
+            `;
+        }
+
+        function restartQuiz() {
+            currentQuestionIndex = 0;
+            userAnswers = new Array(questionsData.length).fill(null);
+            renderQuiz();
+        }
+
+        // --- Simple Confetti Particle Effect ---
+        function triggerConfetti() {
+            const canvas = document.getElementById("confettiCanvas");
+            const ctx = canvas.getContext("2d");
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const particles = [];
+            const colors = ['#f43f5e', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ec4899'];
+
+            for (let i = 0; i < 100; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height - canvas.height,
+                    size: Math.random() * 8 + 4,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    vy: Math.random() * 3 + 2,
+                    vx: Math.random() * 2 - 1,
+                    rot: Math.random() * 360
+                });
+            }
+
+            let animationFrame;
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let alive = false;
+
+                particles.forEach(p => {
+                    p.y += p.vy;
+                    p.x += p.vx;
+                    p.rot += 2;
+
+                    if (p.y < canvas.height) alive = true;
+
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate((p.rot * Math.PI) / 180);
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                    ctx.restore();
+                });
+
+                if (alive) {
+                    animationFrame = requestAnimationFrame(animate);
+                } else {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    cancelAnimationFrame(animationFrame);
+                }
+            }
+
+            animate();
+        }
+
+        // Window Load Handler
+        window.onload = function() {
+            renderQuiz();
+        };
+    </script>
+</body>
+</html>
